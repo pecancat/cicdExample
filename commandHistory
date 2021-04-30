@@ -1,0 +1,121 @@
+#make the ansible directory
+mkdir ansibleProject
+cd ansibleProject/
+touch commandHistory
+# install terraform
+wget https://releases.hashicorp.com/terraform/0.15.1/terraform_0.15.1_linux_arm64.zip
+ls
+unzip terraform_0.15.1_linux_arm64.zip 
+sudo mv terraform /usr/bin/terraform
+# verify terraform is installed
+terraform -help
+#get aws cli
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.0.30.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+[ -d "~/.aws" ] && echo "AWS Configuration directory already exists." || mkdir -p ~/.aws/ && echo "Created ~/.aws directory."
+# make terraform files
+mkdir terraform
+vi terraform/main.tf
+provider "aws" {
+  shared_credentials_file = "~/.aws/credentials"
+  profile                 = "default"
+  region                  = "us-east-1"
+}
+resource "tls_private_key" "private-key" {
+  algorithm   = "RSA"
+  rsa_bits    = 2048
+}
+resource "aws_key_pair" "deployer" {
+  key_name   = "${terraform.workspace}.deployer-key"
+  public_key = tls_private_key.private-key.public_key_openssh
+}
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
+  }
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+  owners = ["099720109477"] # Canonical
+}
+resource "aws_security_group" "student-sg" {
+  name = "Hello-World-SG"
+  description = "Student security group"
+  tags = {
+    Name = "Hello-World-SG"
+    Environment = terraform.workspace
+  }
+}
+resource "aws_security_group_rule" "create-sgr-ssh" {
+  security_group_id = aws_security_group.student-sg.id
+  cidr_blocks         = ["0.0.0.0/0"]
+  from_port         = 22
+  protocol          = "tcp"
+  to_port           = 22
+  type              = "ingress"
+  self              = false
+}
+resource "aws_security_group_rule" "create-sgr-jenkins" {
+  security_group_id = aws_security_group.student-sg.id
+  cidr_blocks         = ["0.0.0.0/0"]
+  from_port         = 8080
+  protocol          = "tcp"
+  to_port           = 8080
+  type              = "ingress"
+  self              = false
+}
+resource "aws_security_group_rule" "create-sgr-outbound" {
+  security_group_id = aws_security_group.student-sg.id
+  cidr_blocks         = ["0.0.0.0/0"]
+  from_port         = 0
+  protocol          = "all"
+  to_port           = 65535
+  type              = "egress"
+  self              = false
+}
+resource "aws_instance" "web" {
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = "t2.micro"
+  key_name      = aws_key_pair.deployer.key_name
+  security_groups = ["Hello-World-SG"]
+cat << EOF >> ~/create-aws-node-terraform/variables.tf
+ EMPTY
+
+
+
+cat << EOF >> ~/create-aws-node-terraform/output.tf
+"private-key" {
+ = tls_private_key.private-key.private_key_pem
+tive = true
+
+
+"public_key_openssh" {
+ = tls_private_key.private-key.public_key_openssh
+
+
+
+#run terraform to create jenkins server
+terraform init
+terraform plan
+terraform apply
+# run terraform for the tomcat server
+cd ../terraformTomcat/
+vi main.tf 
+terraform init
+terraform plan
+terraform apply
+
+#make build yml
+vi runMavenBuild.yml 
+ansible-playbook runMavenBuild.yml 
+find . -name "*.war"
+#make tomcat deploy yml
+vi runTomcatDeploy.yml 
+vi runTomcatDeploy.yml 
+touch host.yml
+vi hosts.yml
+ansible-playbook -i hosts runTomcatDeploy.yml
