@@ -1,0 +1,35 @@
+---
+- hosts: tomcatServer
+  vars:
+  - warName: ROOT.war
+  - warRemotePath: /home/tomcat
+
+  tasks:
+  - name: Download WAR to server
+    command: wget http://git-internal/release.war -O {{ warRemotePath }}/{{ warName }}
+    
+  - name: get current date
+    set_fact: bkpdate="{{ lookup('pipe', 'date +%Y%m%d-%H%M') }}"
+
+  - name: create directory with a date in name
+    file: path="/home/tomcat/{{ bkpdate }}"
+          state=directory
+          mode=0755
+
+  - name: backup war
+    shell: "cp /usr/local/tomcat/webapps/{{ warName }} /home/tomcat/{{ bkpdate }}/"
+    
+  - name: Unzip WAR file
+    unarchive: src={{ warRemotePath }}/{{ warName }} dest=/usr/local/tomcat/webapps/ROOT/ copy=no mode=0755 owner=tomcat7 group=tomcat7
+    notify:
+        - restart tomcat7
+   
+  - name: Delete remote war file
+    file: path={{ warRemotePath }}/{{ warName }} state=absent
+    
+  - name: wait for tomcat to start
+    wait_for: port=8080 timeout=60
+    
+  handlers:
+    - name: Restart tomcat7
+      service: name=tomcat7 state=restarted
