@@ -1,3 +1,4 @@
+---
 - name: test mvn
   shell: mvn -version
   args:
