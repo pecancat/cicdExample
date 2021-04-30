@@ -1,9 +1,7 @@
 ---
 
-- name: echo
+- name: cleanInstall
   hosts: localhost
   tasks:
-    - name: echoAgain
-      shell: echo Hello
-    - name: mavenVersion
-      shell: mvn -version >> ~/log.txt
+    - name: mavenCleanInstall
+      shell: mvn clean install
