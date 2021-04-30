@@ -1,6 +1,9 @@
 ---
-- name: test mvn
-  shell: mvn -version
-  args:
-    chdir: /opt/jenkins/batchtest/
-    executable: /bin/bash
+
+- name: echo
+  hosts: localhost
+  tasks:
+    - name: echoAgain
+      shell: echo Hello
+    - name: mavenVersion
+      shell: mvn -version >> ~/log.txt
